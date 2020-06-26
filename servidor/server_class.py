@@ -31,13 +31,14 @@ class servidor(object):
         self._iniciar_mqtt()
         self.hilo_holamundo = threading.Thread(name="hilo del hola mundo",target=self._hello,daemon=False)#aipg hilo adicional solo para correrlo, imprime un hola mundo
         self.hilo_holamundo.start()
-        #self.hilo_leer_archivo_usuarios = threading.Thread(name='hilo de leer archivos usuarios',target=self._leer_archivo_usuarios,args=(('usuarios'),),daemon=False)#aipg hilo para leer el archivo de salas
-        #self.hilo_leer_archivo_usuarios.start()
-        self._diccionario_salas_usuarios('usuarios')#AIPG tengo un diccionario de salas a las que pertenece un usuario
-        self._diccionario_salas('salas','usuarios')#AIPG tengo un diccionario de usuarios que estan en las salas
+        self.hilo_leer_archivo_usuarios = threading.Thread(name='hilo de leer archivos usuarios',target=self._leer_archivo_usuarios,args=(('usuarios'),),daemon=False)#aipg hilo para leer el archivo de salas
+        self.hilo_leer_archivo_usuarios.start()
+        self._diccionario_salas_usuarios('usuarios')
 
         self.msg = b"00"        #OAGM mensaje entrante
+        self.topic = "00"
 
+        #args = (range(100), ),
     def _hello(self):
         while True:
             logging.info("hola mundo")
@@ -46,7 +47,7 @@ class servidor(object):
 
     def susc_topic(self,topic):#metodo para suscribirse a un topic
         topic_inscribir=ROOTTOPIC + '/' + topic#AIPG comandos/14/topic deseado
-        #print(topic_inscribir)
+        # print(topic_inscribir)
         self.mqttcliente.subscribe((topic_inscribir,0))
         self.mqtthilo = threading.Thread(name= 'MQTT suscripcion',target=self.mqttcliente.loop_start)#aipg hilo para recibir notificaciones del tipic
         self.mqtthilo.start()#aipg el hilo es para que si me suscribo a algo, lo revise siempre
@@ -57,7 +58,7 @@ class servidor(object):
         #aipg configuraciones de mqtt
         self._conf_mqtt()
 
-        self.mqttcliente.subscribe(ROOTTOPIC,0)
+        self.mqttcliente.subscribe((ROOTTOPIC,0))
 
     def _conf_mqtt(self):
         self.mqttcliente = mqtt.Client(clean_session=True)#aipg se crea el objeto de mqtt
@@ -95,38 +96,7 @@ class servidor(object):
             self.usuarios_dict[lista2[i][0]]=lista2[i][2:]
         #print(usuarios_dict)
 
-    def _diccionario_salas(self,salas,usuarios):
-        salas_dict={}
-        lista2=[]
-
-        file_usuarios_salas=open(usuarios,'r')#AIPG abriendo el archivo usuarios
-        archivo_salas=file_usuarios_salas.read()
-        file_usuarios_salas.close()
-        lista1=archivo_salas.split('\n')
-        lista1.pop()
-        for i in lista1:
-            lista2.append(i.split(','))
-        #print(lista2)
-        for i in lista2:
-            i.pop(1)
-        #print(lista2)
-            
-        file_salas=open(salas,'r')
-        archivo_salas=file_salas.read()
-        file_salas.close()
-        archivo_salas2=archivo_salas.split('\n')
-        archivo_salas2.pop()
-        #print(archivo_salas2)
-
-        for j in archivo_salas2:
-            usuarios_de_salas=[]
-            for i in lista2:
-                if j in i:#AIPG si la sala esta en la lista
-                    usuarios_de_salas.append(i[0])
-            salas_dict[j]=usuarios_de_salas
-        print(salas_dict)
-
-    def _consulta_usuarios_sala(self,user_id,sala):#AIPG metodo para consultar si un usuario tiene alguna sala configurada
+    def _consulta(self,user_id,sala):#AIPG metodo para consultar si un usuario tiene alguna sala configurada
         if user_id in self.usuarios_dict.keys():#AIPG verificar que el usuario este en la lista de configuracion
             usuario_sala = self.usuarios_dict[user_id]#AIPG si el usuario esta en el diccionario, entonces nos devolvera su valor para iterarlo
             for i in usuario_sala:
@@ -140,8 +110,27 @@ class servidor(object):
         print(si_esta)
         return si_esta
 
-    def _consulta_sala_usuario(self,sala):#metodo para saber si un usuario esta en la sala
-        pass
+    def _leer_archivo_usuarios(self,file):
+        lista_usuarios=[]
+        try:
+            while True:
+                file_usuarios=open(file,'r')
+                archivo_usuarios=file_usuarios.readlines()
+                file_usuarios.close()
+                #print(archivo_usuarios,type(archivo_usuarios))
+
+                for i in archivo_usuarios:
+                    lista_usuarios.append(i[0:9])
+                #print(lista_usuarios)
+                for j in lista_usuarios:#AIPG se subscriben a todos los topic de comandos/14/usuarios
+                    self.susc_topic(j)
+
+                time.sleep(6)
+
+        except Exception as identifier:
+            logging.error(identifier)
+        
+
 
     def _revisar_activo(self):
         pass
@@ -149,17 +138,20 @@ class servidor(object):
     
     #aipg metodos callback de mqtt
     def on_message(self,mqttcliente,userdata,msg):#aipg metodo cuando entra un mensaje a un topic suscrito
+        self.msg = msg.payload          #OAGM haciendo atributo el ultimo mensaje recibido
+        self.topic = msg.topic          #OAGM haciendo atributo el ultimo topic recibido
         logging.info("Ha llegado un mensaje de este topic: " + str(msg.topic))
         logging.info("Su contenido es: " + str(msg.payload))
 
         trama=msg.payload#aipg trama en binario
-        self.msg = trama #OAGM haciendo atributo el ID del ultimo comando recibido
         print("trama recibida",trama)
         #print(trama[:1])
-        if trama[:1]==binascii.unhexlify('04'):#si es una trama alive
-        
+        #if trama[:1]==binascii.unhexlify('04'):#si es una trama alive
+        if trama[:2]== b'03':
+            
+
             print("exito")
-            trama_id=trama[2:]
+            trama_id=trama[3:]
             trama_id=trama_id.decode('ascii')#user id queda como string
             #print(trama_id,type(trama_id))
 
@@ -197,4 +189,3 @@ class servidor(object):
     def on_publish(self,mqttcliente,userdata,mid):#aipg metodo que desplega si se ha publicado con exito
         publishText= "publicacion exitosa"
         logging.info(publishText)
-
