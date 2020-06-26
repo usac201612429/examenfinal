@@ -19,6 +19,7 @@ FORMATO = '[%(levelname)s] %(message)s'
 logging.basicConfig(level = logging.INFO, format=FORMATO)
 
 cliente = clients() #FPRTH Se crea un nuevo objeto de tipo cliente
+comandos = ClientCommands(cliente)
 
 #FPRTH Se crea una funcion que maneja la interfaz para el usuario.  
 

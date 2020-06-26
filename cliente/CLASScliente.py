@@ -2,7 +2,6 @@
 
 
 from constantes import * #FPRTH Importando las constantes del proyecto
-from ClientComands import * #OAGM Importando clases para los comandos del cliente
 
 #FPRTH Importando las librerias necesarias
 import os
@@ -42,6 +41,9 @@ class clients (object):
         self.cliente_paho.connect(host=MQTT_HOST,port=MQTT_PORT)
         self.cliente_paho.subscribe(self.subscripciones)
         self.cliente_paho.loop_start()
+
+        self.message = "00"
+        self.topic = "00"
 
         self.hilos =[] #FPRTH Lista que controla los hilos a usar para reproducir el audio
         
@@ -106,6 +108,8 @@ class clients (object):
 
     #FPRTH Funcion que maneja cuando se recibe un mensaje por MQTT
     def on_message(self,client,userdata,msg):
+        self.message = msg.payload
+        self.topic = msg.topic
         
         topic=str(msg.topic)#FPRTH Se obtiene el topic donde se recibio el mensaje
         ltopic=topic.split('/') #FPRTH El topic se divide en lista para ver su estructura y poder tomar decisioens
@@ -125,8 +129,8 @@ class clients (object):
             #FPRTH Se configura e inicia el hilo que guarda y reproduce el audio
             self.hilo = threading.Thread(name='Reproductor de audio recibido',target=self.Reproducir_Audio, args=((archivo_nombre,brcibidos)),daemon=False)
             self.hilo.start()
-        elif ltopic[0] == 'comandos': #FPRTH Si viene del topic comandos se ejecuta un metodo diferente
-            comandos.verificarMensajes(msg.payload, msg.topic)
+        # elif ltopic[0] == 'comandos': #FPRTH Si viene del topic comandos se ejecuta un metodo diferente
+        #     comandos.verificarMensajes(msg.payload, msg.topic)
 
 
     #FPRTH Funcion que guarda y reproduce el audio
