@@ -251,10 +251,11 @@ def envio_audio():
 def grabacion(duracion):
     #FPRTH Se obtiene los bits del archivo a enviar
     os.system('arecord -d '+duracion+' -f U8 -r 8000 audio.wav')
-    audio = open('audio.wav','rb')
-    b_audio = audio.read()
-    audio.close()
-    cliente.EnviarTexto(b_audio) #FPRTH Se envia por MQTT el audio a enviar
+    # audio = open('audio.wav','rb')
+    # b_audio = audio.read()
+    # audio.close()
+    # cliente.EnviarTexto(b_audio) #FPRTH Se envia por MQTT el audio a enviar
+    comandos.ftr()
 
 
 

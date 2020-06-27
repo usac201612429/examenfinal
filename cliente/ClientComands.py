@@ -15,6 +15,9 @@ class ClientCommands:
         with (open("usuario", "rb")) as archivo:    #OAGM: obtenemos el userID        
             self.userID = archivo.read()[:-1]       
         archivo.close()
+        self.audio = b"00"                          #OAGM: variable para archivos de audio
+        self.audioSize = 0                          #OAGM: tamaño del archivo de audio
+        self.ftrSent = False
         self.hiloAlive = threading.Thread(name = 'hiloCommands', target = self.alive, args = (()), daemon = True) #OAGM hilo para enviar ALIVEs
         self.hiloAlive.start()   
         self.hiloMensajes = threading.Thread(name = 'hiloCommands', target = self.verificarMensajes, args = (()), daemon = True) #OAGM hilo para revisar comandos entrantes
@@ -27,7 +30,7 @@ class ClientCommands:
             self.cliente.cliente_paho.publish(f"{MQTT_COMANDOS}{MQTT_GRUPO}{self.userID.decode('UTF-8', 'strict')}", value, qos = 0, retain = False)    #OAGM: se envia la trama
             # print("alive enviado", self._periodosAlivePerdidos) 
             time.sleep(self._alivePeriod)               #OAGM: retardo entre envios ALIVE
-            print(self._periodosAlivePerdidos)
+            # print(self._periodosAlivePerdidos)
             if not self.ackRecieved:                    #OAGM: se revisa si entro un ack durante el sleep
                 self._periodosAlivePerdidos += 1        #OAGM: primer periodo sin recibir ACK del servidor
             else:
@@ -39,11 +42,20 @@ class ClientCommands:
                 self.cliente.cliente_paho.loop_stop()                                       #OAGM: se finalizan algunos procesos
                 self.cliente.cliente_paho.disconnect()
                 os.kill(os.getpid(), 9)                                             #OAGM: y se sale del programa               
-                
-                
+ 
+    def ftr(self):
+        if not self.ftrSent:
+            self.audio = open('audio.wav','rb')
+            self.audioSize = os.stat('audio.wav').st_size
+            if len(self.cliente.destino.split("/")[2]) == 9:
+                value = FTR + b'$' + (self.cliente.destino.split("/")[2]).encode() + b'$' + str(self.audioSize).encode()
+            else:
+                value = FTR + b'$' + (self.cliente.destino.split("/")[1] + self.cliente.destino.split("/")[2]).encode() + b'$' + str(self.audioSize).encode()
 
-    def ackRespuesta(self):
-        pass
+            self.cliente.cliente_paho.publish(f"{MQTT_COMANDOS}{MQTT_GRUPO}{self.userID.decode('UTF-8', 'strict')}", value, qos = 0, retain = False)    #OAGM: se envia la trama
+            self.ftrSent = True
+        else:
+            print("Se esta enviando el audio anterior")
 
     
     def publicar(self):
