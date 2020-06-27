@@ -37,7 +37,11 @@ def menu_principal():
         if t == '1':
             menu_texto()
         elif t=='2':
-            menu_voz()
+            if comandos.enviandoAudio:        #OAGM: si no se espera respuesta (OK/NO) del srvidor puede empezar proceso de envio de audio
+                os.system('clear')
+                print("Se está enviando el audio anterior")
+            else:
+                menu_voz()
         elif t=='3':
             menu_salir()
             break

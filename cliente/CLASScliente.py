@@ -44,6 +44,7 @@ class clients (object):
 
         self.message = "00"
         self.topic = "00"
+        self.ftrSent = False
 
         self.hilos =[] #FPRTH Lista que controla los hilos a usar para reproducir el audio
         
@@ -129,8 +130,6 @@ class clients (object):
             #FPRTH Se configura e inicia el hilo que guarda y reproduce el audio
             self.hilo = threading.Thread(name='Reproductor de audio recibido',target=self.Reproducir_Audio, args=((archivo_nombre,brcibidos)),daemon=False)
             self.hilo.start()
-        # elif ltopic[0] == 'comandos': #FPRTH Si viene del topic comandos se ejecuta un metodo diferente
-        #     comandos.verificarMensajes(msg.payload, msg.topic)
 
 
     #FPRTH Funcion que guarda y reproduce el audio
