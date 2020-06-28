@@ -19,10 +19,8 @@ MQTT_PORT = 1883
 MQTT_USER = "proyectos"
 MQTT_PASS = "proyectos980"
 
-IP = MQTT_HOST
-PORT = 9801
-
-parametros_socket_server =(IP,PORT)
+# IP = MQTT_HOST
+# TCP_PORT = 9801
 
 logging.basicConfig(
     level = logging.INFO,
@@ -43,12 +41,6 @@ class servidor(object):
 
         self._diccionario_salas_usuarios('usuarios')#AIPG diccionario de salas que tienen los usuarios, clave -> usuarios
         self._diccionario_salas('salas','usuarios')#AIPG diccionario de usuarios que estan en las salas, clave -> salas
-
-        #AIPG configuraciones del socket e hilo
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)#AIPG socket de la ipv4 y tcp
-        self.sock.bind(parametros_socket_server)#AIPG levanta el socket en la direccion especificada
-        self.hilo_sock = threading.Thread(name='hilo del socket tcp',target=self.metodo_hilo_socket,daemon=False)
-        ######################################################################################
 
         self.msg = b"00"        #OAGM mensaje entrante
         self.topic = "00"
@@ -176,17 +168,6 @@ class servidor(object):
         except Exception as identifier:
             logging.error(identifier)
         
-    def metodo_hilo_socket(self):#AIPG metodo del socket controlado en el hilo
-        self.sock.listen(10)
-        while True:
-            print('Esperando conexion remota')
-            self.coneccion, self.dir_cliente = self.sock.accept()
-            try:
-                print('conexion establecida con: ',self.dir_cliente)
-
-            except KeyboardInterrupt:
-                self.sock.close()
-
     
     #aipg metodos callback de mqtt
     def on_message(self,mqttcliente,userdata,msg):#aipg metodo cuando entra un mensaje a un topic suscrito

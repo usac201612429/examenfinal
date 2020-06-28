@@ -4,6 +4,7 @@ import threading
 import logging
 import sys
 import os
+import socket
 
 class ClientCommands:
     def __init__(self, cliente):
@@ -22,7 +23,8 @@ class ClientCommands:
         self.hiloAlive = threading.Thread(name = 'hiloCommands', target = self.alive, args = (()), daemon = True) #OAGM hilo para enviar ALIVEs
         self.hiloAlive.start()   
         self.hiloMensajes = threading.Thread(name = 'hiloCommands', target = self.verificarMensajes, args = (()), daemon = True) #OAGM hilo para revisar comandos entrantes
-        self.hiloMensajes.start()   
+        self.hiloMensajes.start()    
+        self.hiloSocket = threading.Thread(name = 'hiloCommands', target = self.socket, args = (()), daemon = False) #OAGM hilo para revisar comandos entrantes
 
     def alive(self):
         while True:
@@ -46,12 +48,15 @@ class ClientCommands:
 
  
     def ftr(self):                                              #OAGM: envio de trama FTR y levanta "bandera" de espera
+        print(self.cliente.destino)
         self.lastCommandSent = FTR
         self.audio = open('audio.wav','rb')                     #OAGM: lectura del audio grabado
         self.audioSize = os.stat('audio.wav').st_size           #OAGM: tamaño del archivo de audio en bytes
         if len(self.cliente.destino.split("/")[2]) == 9:        #OAGM: construyendo la trama FTR
+            #OAGM: se lee:   FTR + destinatario + tamaño (en bytes)|trama entrante: audio/01/carné
             value = FTR + b'$' + (self.cliente.destino.split("/")[2]).encode() + b'$' + str(self.audioSize).encode()
         else:
+            #OAGM: se lee:   FTR + destinatario + tamaño (en bytes)|trama entrante: audio/01/Sala, ejemplo: audio/01/S02
             value = FTR + b'$' + (self.cliente.destino.split("/")[1] + self.cliente.destino.split("/")[2]).encode() + b'$' + str(self.audioSize).encode()
         #OAGM: envio de la trama y levantado de "bandera"
         self.cliente.cliente_paho.publish(f"{MQTT_COMANDOS}{MQTT_GRUPO}{self.userID.decode('UTF-8', 'strict')}", value, qos = 0, retain = False)    #OAGM: se envia la trama
@@ -60,7 +65,27 @@ class ClientCommands:
 
     def socketOn(self):
         if not self.ftrSent and self.enviandoAudio:
+            self.hiloSocket.start()
             print("Se levantó el socket")
+
+    def socket(self):
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)        #OAGM Crea un socket TCP
+            BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
+            
+            # serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
+            serverAddress = ('127.0.0.1', TCP_PORT) #Escucha en todas las interfaces
+            print('Conectando a {} en el puerto {}'.format(*serverAddress))
+            sock.connect(serverAddress) #Levanta servidor con parametros especificados
+
+            sock.sendfile(self.audio, 0)
+            print("Audio enviado!") 
+            print('Conexion finalizada')
+            self.enviandoAudio = False
+            sock.close()
+    
+    def respuestaFRR(self, trama):
+        print("FRR recibida!")
+        print(trama)
 
     
     def publicar(self):
@@ -90,6 +115,12 @@ class ClientCommands:
 
                 elif self.cliente.message[:1] == NO:
                     self.ftrSent = False
+                    self.enviandoAudio = False
                     self.cliente.message = "00"
-                    print("recibi un NO")
+                    self.audio = b"00"
+                    print("Auidio eliminado")
+                
+                elif self.cliente.message[:1] == FRR:
+                    self.respuestaFRR(self.cliente.message.decode().split("$"))
+                    self.cliente.message = "00"
 
