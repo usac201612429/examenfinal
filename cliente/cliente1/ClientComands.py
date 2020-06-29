@@ -73,9 +73,8 @@ class ClientCommands:
                 # serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
                 serverAddress = ('127.0.0.1', TCP_PORT) #Escucha en todas las interfaces
                 logging.info('Conectando a {} en el puerto {}'.format(*serverAddress))
+                sock.connect(serverAddress) #Levanta servidor con parametros especificados
                 try:
-                    sock.connect(serverAddress) #Levanta servidor con parametros especificados
-
                     sock.sendfile(self.audio, 0)
                     self.audio.close()
                     logging.info("Audio enviado!") 
@@ -99,6 +98,7 @@ class ClientCommands:
             try:
                 nombre = str(time.time())+".wav"
                 data = sock.recv(BUFFER_SIZE)  
+                logging.info(f"Mensaje de audio de: {trama[1]}")
                 with open(nombre, "wb") as audio:
                     logging.info("añadiendo contenido de audio. . .")
                     while data:                            

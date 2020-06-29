@@ -63,21 +63,19 @@ class ServerCommands:
                     sock.bind(parametros_socket_server)#AIPG levanta el socket en la direccion especificada
                     BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
                     sock.listen(1)
-                    while True:
-                        logging.info('Esperando conexion remota')
-                        conexion, dir_cliente = sock.accept()
-                        logging.info(f'conexion establecida con: {dir_cliente}')
-                        try:
-                            data = conexion.recv(BUFFER_SIZE)     
-                            with open("ultimoAudio.wav", "wb") as audio:
-                                logging.info("añadiendo contenido de audio. . .")
-                                while data:                           
-                                    audio.write(data) 
-                                    data = conexion.recv(BUFFER_SIZE)           
-                        
-                        finally:
-                            conexion.close()
-                            break
+                    logging.info('Esperando conexion remota')
+                    conexion, dir_cliente = sock.accept()
+                    logging.info(f'conexion establecida con: {dir_cliente}')
+                    try:
+                        data = conexion.recv(BUFFER_SIZE)     
+                        with open("ultimoAudio.wav", "wb") as audio:
+                            logging.info("añadiendo contenido de audio. . .")
+                            while data:                           
+                                audio.write(data) 
+                                data = conexion.recv(BUFFER_SIZE)           
+                    
+                    finally:
+                        conexion.close()
 
                 logging.info("Archivo guardado!")
                 self.frr()
@@ -99,19 +97,17 @@ class ServerCommands:
                 sock.bind(parametros_socket_server)#AIPG levanta el socket en la direccion especificada
                 BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
                 sock.listen(1)
-                while True:
-                    logging.info('Esperando conexion remota')
-                    conexion, dir_cliente = sock.accept()
-                    logging.info(f'conexion establecida con: {dir_cliente}')
-                    try:
-                        with open("ultimoAudio.wav", "rb") as audio:
-                            conexion.sendfile(audio, 0)
-                        logging.info("Audio enviado!")                 
-                    
-                    finally:
-                        conexion.close()
-                        logging.info("conexion finalizada")
-                    break
+                logging.info('Esperando conexion remota')
+                conexion, dir_cliente = sock.accept()
+                logging.info(f'conexion establecida con: {dir_cliente}')
+                try:
+                    with open("ultimoAudio.wav", "rb") as audio:
+                        conexion.sendfile(audio, 0)
+                    logging.info("Audio enviado!")                 
+                
+                finally:
+                    conexion.close()
+                    logging.info("conexion finalizada")
             print("salio del with para socket de envio a usuario")
 
         else: 
@@ -126,19 +122,17 @@ class ServerCommands:
                         sock.bind(parametros_socket_server)#AIPG levanta el socket en la direccion especificada
                         BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
                         sock.listen(1)
-                        while True:
-                            logging.info(f'Esperando conexion remota: cliente {usuario}')
-                            conexion, dir_cliente = sock.accept()
-                            logging.info(f'conexion establecida con: {dir_cliente}')
-                            try:
-                                with open("ultimoAudio.wav", "rb") as audio:
-                                    conexion.sendfile(audio, 0)
-                                logging.info("Audio enviado!")                        
-                            
-                            finally:
-                                conexion.close()
-                                logging.info("conexion finalizada")
-                                break
+                        logging.info(f'Esperando conexion remota: cliente {usuario}')
+                        conexion, dir_cliente = sock.accept()
+                        logging.info(f'conexion establecida con: {dir_cliente}')
+                        try:
+                            with open("ultimoAudio.wav", "rb") as audio:
+                                conexion.sendfile(audio, 0)
+                            logging.info("Audio enviado!")                        
+                        
+                        finally:
+                            conexion.close()
+                            logging.info("conexion finalizada")
                     print("salio del with para socket de envio a usuario")
         self.tranferirAudio = False
 
