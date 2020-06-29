@@ -24,7 +24,7 @@ class ClientCommands:
         self.hiloAlive.start()   
         self.hiloMensajes = threading.Thread(name = 'hiloCommands', target = self.verificarMensajes, args = (()), daemon = True) #OAGM hilo para revisar comandos entrantes
         self.hiloMensajes.start()    
-        self.hiloSocket = threading.Thread(name = 'hiloCommands', target = self.socket, args = (()), daemon = False) #OAGM hilo para revisar comandos entrantes
+        # self.hiloSocket = threading.Thread(name = 'hiloCommands', target = self.socket, args = (()), daemon = False) #OAGM hilo para revisar comandos entrantes
 
     def alive(self):
         while True:
@@ -65,6 +65,7 @@ class ClientCommands:
 
     def socketOn(self):
         if not self.ftrSent and self.enviandoAudio:
+            self.hiloSocket = threading.Thread(name = 'hiloCommands', target = self.socket, args = (()), daemon = False) #OAGM hilo para revisar comandos entrantes
             self.hiloSocket.start()
             print("Se levantó el socket")
 
@@ -75,17 +76,56 @@ class ClientCommands:
             # serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
             serverAddress = ('127.0.0.1', TCP_PORT) #Escucha en todas las interfaces
             print('Conectando a {} en el puerto {}'.format(*serverAddress))
-            sock.connect(serverAddress) #Levanta servidor con parametros especificados
+            try:
+                sock.connect(serverAddress) #Levanta servidor con parametros especificados
 
-            sock.sendfile(self.audio, 0)
-            print("Audio enviado!") 
-            print('Conexion finalizada')
-            self.enviandoAudio = False
-            sock.close()
+                sock.sendfile(self.audio, 0)
+                self.audio.close()
+                print("Audio enviado!") 
+            finally:
+                self.enviandoAudio = False
+                sock.close()
+                print('Conexion finalizada')
+            
     
     def respuestaFRR(self, trama):
         print("FRR recibida!")
         print(trama)
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)        #OAGM Crea un socket TCP
+        BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
+        
+        # serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
+        serverAddress = ('127.0.0.1', TCP_PORT) #Escucha en todas las interfaces
+        print('Conectando a {} en el puerto {}'.format(*serverAddress))
+        sock.connect(serverAddress) #Levanta servidor con parametros especificados
+
+        try:
+            data = sock.recv(BUFFER_SIZE)
+            while True:      
+                print("Creando/abriendo archivo de auido")
+                with open("audioRecibido.wav", "wb") as audio:
+                    print("añadiendo contenido de audio. . .")
+                    while data:          
+                        print(len(data))
+                        if len(data) == trama[3]: #< BUFFER_SIZE:   
+                            break
+                        else:                            
+                            audio.write(data) 
+                            data = sock.recv(BUFFER_SIZE) 
+                            print("Archivo guardado!") 
+                audio.close()      
+                break
+
+        except KeyboardInterrupt:
+            sock.close()
+
+        finally:
+            sock.close()
+            print('Conexion finalizada')
+            print("Reproduciendo . . .")
+            os.system('aplay audioRecibido.wav')
+
 
     
     def publicar(self):

@@ -15,7 +15,7 @@ class ServerCommands:
         self.frrInfo = []
         self.hiloFindCommands = threading.Thread(name = 'FindCommands', target = self.findCommand, args = (()), daemon = True) #OAGM hilo para revisar comandos entrantes 
         self.hiloFindCommands.start()       
-        self.hilo_sock = threading.Thread(name='hilo del socket tcp',target=self.socket,daemon=False)
+        # self.hilo_sock = threading.Thread(name='hilo del socket tcp',target=self.socket,daemon=False)
 
     """ OAGM:
         Funcion para devolver un ACK al recivir distintos comandos. Utiliza el valor de "toTopic" para saber a
@@ -34,6 +34,7 @@ class ServerCommands:
                 if usuario in self.servidor.lista_activos:
                     value = OK + b'$' + destinoYtamanio[0].encode()
                     self.servidor.mqttcliente.publish(f"{ROOTTOPIC}/{remitente}", value, qos = 0, retain = False)
+                    self.hilo_sock = threading.Thread(name='hilo del socket tcp',target=self.socket,daemon=False)
                     self.hilo_sock.start()
                     break
             else:
@@ -44,6 +45,7 @@ class ServerCommands:
             if destinoYtamanio[0] in self.servidor.lista_activos:
                 value = OK + b'$' + destinoYtamanio[0].encode()
                 self.servidor.mqttcliente.publish(f"{ROOTTOPIC}/{remitente}", value, qos = 0, retain = False)
+                self.hilo_sock = threading.Thread(name='hilo del socket tcp',target=self.socket,daemon=False)
                 self.hilo_sock.start()
             else:
                 print(f"Usuario {destinoYtamanio[0]} inactivo")
@@ -57,13 +59,13 @@ class ServerCommands:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)#AIPG socket de la ipv4 y tcp
         sock.bind(parametros_socket_server)#AIPG levanta el socket en la direccion especificada
         BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
-        sock.listen(3)
+        sock.listen(1)
         while True:
             print('Esperando conexion remota')
-            coneccion, dir_cliente = sock.accept()
+            conexion, dir_cliente = sock.accept()
             print('conexion establecida con: ', dir_cliente)
             try:
-                data = coneccion.recv(BUFFER_SIZE)
+                data = conexion.recv(BUFFER_SIZE)
                 while True:      
                     print("Creando/abriendo archivo de auido")
                     with open("ultimoAudio.wav", "wb") as audio:
@@ -74,29 +76,92 @@ class ServerCommands:
                                 break
                             else:                            
                                 audio.write(data) 
-                                data = coneccion.recv(BUFFER_SIZE) 
+                                data = conexion.recv(BUFFER_SIZE) 
                                 print("Archivo guardado!") 
                     audio.close()     
                     # print("Reproduciendo . . .")
                     # os.system('aplay ultimoAudio.wav') 
-                    break
-                self.frr()
-                break
-                
+                    break             
 
             except KeyboardInterrupt:
+                conexion.close()
                 sock.close()
+            
+            finally:
+                conexion.close()
+                sock.close() 
+                self.frr()
+                break
 
 
     def frr(self):
         #OAGM: self.frrInfo = [01S02, 40004, #carnéRemitente] o [#carnéDestinatario, 40004, #carnéRemitente]
         #OAGM: a FRR se le concatena Remintente + Trama FTR(sin el comando), es decir FRR + Remitente + (trama FTR); trama FTR = FTR$01S02$40004 o FTR$201612429$40004
         #OAGM: por lo tanto, la trama FRR se lee: FRR + remitente + destinatario + tamaño del audio
-        if len(self.frrInfo[0]) == 9:
+        if len(self.frrInfo[0]) == 9:       #OAGM: desitnatario usuario
             value = FRR + b'$' + self.frrInfo[2].encode() + b'$' + self.frrInfo[0].encode() + b'$' + self.frrInfo[1].encode()
             self.servidor.mqttcliente.publish(f"{ROOTTOPIC}/{self.frrInfo[0]}", value, qos = 0, retain = False)
+            #AIPG configuraciones del socket
+            parametros_socket_server =('127.0.0.1',TCP_PORT)
+            # parametros_socket_server =(MQTT_HOST,TCP_PORT)
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)#AIPG socket de la ipv4 y tcp
+            sock.bind(parametros_socket_server)#AIPG levanta el socket en la direccion especificada
+            BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
+            sock.listen(1)
+            while True:
+                print('Esperando conexion remota')
+                conexion, dir_cliente = sock.accept()
+                print('conexion establecida con: ', dir_cliente)
+                try:
+                    with open("ultimoAudio.wav", "rb") as audio:
+                        conexion.sendfile(audio, 0)
+                    audio.close()
+                    print("Audio enviado!")
+                
+                
+                except KeyboardInterrupt:
+                    conexion.close()
+                    sock.close()
+                
+                finally:
+                    conexion.close()
+                    sock.close()
+                    print("conexion finalizada")
+                break
+
         else: 
-            pass
+            for usuario in self.servidor.salas_dict[self.frrInfo[0]]:
+                print(usuario)
+                if usuario in self.servidor.lista_activos:
+                    value = FRR + b'$' + self.frrInfo[2].encode() + b'$' + self.frrInfo[0].encode() + b'$' + self.frrInfo[1].encode()
+                    self.servidor.mqttcliente.publish(f"{ROOTTOPIC}/{usuario}", value, qos = 0, retain = False)
+                    #AIPG configuraciones del socket
+                    parametros_socket_server =('127.0.0.1',TCP_PORT)
+                    # parametros_socket_server =(MQTT_HOST,TCP_PORT)
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)#AIPG socket de la ipv4 y tcp
+                    sock.bind(parametros_socket_server)#AIPG levanta el socket en la direccion especificada
+                    BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
+                    sock.listen(1)
+                    while True:
+                        print(f'Esperando conexion remota: cliente {usuario}')
+                        conexion, dir_cliente = sock.accept()
+                        print('conexion establecida con: ', dir_cliente)
+                        try:
+                            with open("ultimoAudio.wav", "rb") as audio:
+                                conexion.sendfile(audio, 0)
+                            audio.close()
+                            print("Audio enviado!")                        
+                        
+                        except KeyboardInterrupt:
+                            conexion.close()
+                            sock.close()
+                        
+                        finally:
+                            conexion.close()
+                            sock.close()
+                            print("conexion finalizada")
+                            break
+
 
 
     """ OAGM:
