@@ -58,7 +58,7 @@ class ServerCommands:
     def socket(self):#AIPG metodo del socket controlado en el hilo
         while True:
             if self.tranferirAudio:
-                parametros_socket_server =(MQTT_HOST,TCP_PORT)
+                parametros_socket_server =('127.0.0.1',TCP_PORT)
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                     sock.bind(parametros_socket_server)#AIPG levanta el socket en la direccion especificada
                     BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
@@ -93,7 +93,7 @@ class ServerCommands:
             value = FRR + b'$' + self.frrInfo[2].encode() + b'$' + self.frrInfo[0].encode() + b'$' + self.frrInfo[1].encode()
             self.servidor.mqttcliente.publish(f"{ROOTTOPIC}/{self.frrInfo[0]}", value, qos = 0, retain = False)
             #AIPG configuraciones del socket
-            parametros_socket_server =(MQTT_HOST,TCP_PORT)
+            parametros_socket_server =('127.0.0.1',TCP_PORT)
             # parametros_socket_server =(MQTT_HOST,TCP_PORT)
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock: #AIPG socket de la ipv4 y tcp            
                 sock.bind(parametros_socket_server)#AIPG levanta el socket en la direccion especificada
@@ -120,7 +120,7 @@ class ServerCommands:
                     value = FRR + b'$' + self.frrInfo[2].encode() + b'$' + self.frrInfo[0].encode() + b'$' + self.frrInfo[1].encode()
                     self.servidor.mqttcliente.publish(f"{ROOTTOPIC}/{usuario}", value, qos = 0, retain = False)
                     #AIPG configuraciones del socket
-                    parametros_socket_server =(MQTT_HOST,TCP_PORT)
+                    parametros_socket_server =('127.0.0.1',TCP_PORT)
                     # parametros_socket_server =(MQTT_HOST,TCP_PORT)
                     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:     #AIPG socket de la ipv4 y tcp                    
                         sock.bind(parametros_socket_server)#AIPG levanta el socket en la direccion especificada

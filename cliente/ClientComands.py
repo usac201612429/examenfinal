@@ -71,7 +71,7 @@ class ClientCommands:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:        #OAGM Crea un socket TCP
                 BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB                
                 # serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
-                serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
+                serverAddress = ('127.0.0.1', TCP_PORT) #Escucha en todas las interfaces
                 logging.info('Conectando a {} en el puerto {}'.format(*serverAddress))
                 try:
                     sock.connect(serverAddress) #Levanta servidor con parametros especificados
@@ -92,7 +92,7 @@ class ClientCommands:
             BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
             
             # serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
-            serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
+            serverAddress = ('127.0.0.1', TCP_PORT) #Escucha en todas las interfaces
             logging.info('Conectando a {} en el puerto {}'.format(*serverAddress))
             sock.connect(serverAddress) #Levanta servidor con parametros especificados
 
