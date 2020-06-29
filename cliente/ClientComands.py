@@ -48,7 +48,6 @@ class ClientCommands:
 
  
     def ftr(self):                                              #OAGM: envio de trama FTR y levanta "bandera" de espera
-        print(self.cliente.destino)
         self.lastCommandSent = FTR
         self.audio = open('audio.wav','rb')                     #OAGM: lectura del audio grabado
         self.audioSize = os.stat('audio.wav').st_size           #OAGM: tamaño del archivo de audio en bytes
@@ -67,64 +66,52 @@ class ClientCommands:
         if not self.ftrSent and self.enviandoAudio:
             self.hiloSocket = threading.Thread(name = 'hiloCommands', target = self.socket, args = (()), daemon = False) #OAGM hilo para revisar comandos entrantes
             self.hiloSocket.start()
-            print("Se levantó el socket")
 
     def socket(self):
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)        #OAGM Crea un socket TCP
-            BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
-            
-            # serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
-            serverAddress = ('127.0.0.1', TCP_PORT) #Escucha en todas las interfaces
-            print('Conectando a {} en el puerto {}'.format(*serverAddress))
-            try:
-                sock.connect(serverAddress) #Levanta servidor con parametros especificados
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:        #OAGM Crea un socket TCP
+                BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB                
+                # serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
+                serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
+                logging.info('Conectando a {} en el puerto {}'.format(*serverAddress))
+                try:
+                    sock.connect(serverAddress) #Levanta servidor con parametros especificados
 
-                sock.sendfile(self.audio, 0)
-                self.audio.close()
-                print("Audio enviado!") 
-            finally:
-                self.enviandoAudio = False
-                sock.close()
-                print('Conexion finalizada')
+                    sock.sendfile(self.audio, 0)
+                    self.audio.close()
+                    logging.info("Audio enviado!") 
+                finally:
+                    self.enviandoAudio = False
+                    logging.info('Conexion finalizada')
+            
+            print("salio del with para socket de envio a servidor")
             
     
     def respuestaFRR(self, trama):
-        print("FRR recibida!")
-        print(trama)
 
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)        #OAGM Crea un socket TCP
-        BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:       #OAGM Crea un socket TCP
+            BUFFER_SIZE = 16 * 1024 #Bloques de 16 KB
+            
+            # serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
+            serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
+            logging.info('Conectando a {} en el puerto {}'.format(*serverAddress))
+            sock.connect(serverAddress) #Levanta servidor con parametros especificados
+
+            try:
+                nombre = str(time.time())+".wav"
+                data = sock.recv(BUFFER_SIZE)  
+                with open(nombre, "wb") as audio:
+                    logging.info("añadiendo contenido de audio. . .")
+                    while data:                            
+                        audio.write(data) 
+                        data = sock.recv(BUFFER_SIZE) 
+                logging.info("Archivo guardado!")   
+
+            finally:
+                logging.info('Conexion finalizada')
+                logging.info("Reproduciendo . . .")
+                os.system(f'aplay {nombre}')
         
-        # serverAddress = (MQTT_HOST, TCP_PORT) #Escucha en todas las interfaces
-        serverAddress = ('127.0.0.1', TCP_PORT) #Escucha en todas las interfaces
-        print('Conectando a {} en el puerto {}'.format(*serverAddress))
-        sock.connect(serverAddress) #Levanta servidor con parametros especificados
-
-        try:
-            data = sock.recv(BUFFER_SIZE)
-            while True:      
-                print("Creando/abriendo archivo de auido")
-                with open("audioRecibido.wav", "wb") as audio:
-                    print("añadiendo contenido de audio. . .")
-                    while data:          
-                        print(len(data))
-                        if len(data) == trama[3]: #< BUFFER_SIZE:   
-                            break
-                        else:                            
-                            audio.write(data) 
-                            data = sock.recv(BUFFER_SIZE) 
-                            print("Archivo guardado!") 
-                audio.close()      
-                break
-
-        except KeyboardInterrupt:
-            sock.close()
-
-        finally:
-            sock.close()
-            print('Conexion finalizada')
-            print("Reproduciendo . . .")
-            os.system('aplay audioRecibido.wav')
+        print("salio del with para socket de recepcion de audio")
 
 
     
@@ -158,7 +145,7 @@ class ClientCommands:
                     self.enviandoAudio = False
                     self.cliente.message = "00"
                     self.audio = b"00"
-                    print("Auidio eliminado")
+                    logging.info("No hay destinatarios activos")
                 
                 elif self.cliente.message[:1] == FRR:
                     self.respuestaFRR(self.cliente.message.decode().split("$"))
