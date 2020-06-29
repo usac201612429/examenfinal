@@ -14,6 +14,13 @@ import os
 import time
 import sys
 
+import base64
+import hashlib
+from Crypto.Cipher import AES
+from Crypto import Random
+
+bs = AES.block_size
+
 #FPRTH Configurando el logging que mostrara la informacion
 FORMATO = '[%(levelname)s] %(message)s'
 logging.basicConfig(level = logging.INFO, format=FORMATO)
@@ -209,7 +216,10 @@ def envio_texto():
     os.system('clear')
     logging.info('Enviando mensaje de texto hacia '+cliente.GetDestino()+'\n')
     msg = input('Escriba el mensaje que desea enviar: \n') #FPRTH Se recibe el mensaje que desea enviar el usuario
-    cliente.EnviarTexto(msg) #FPRTH Se envia por MQTT el mensaje
+    #AIPG cifrado de mensaje
+    msg_cifrado=encriptacion_del_mensaje(msg)
+    #######################################
+    cliente.EnviarTexto(msg_cifrado) #FPRTH Se envia por MQTT el mensaje
     
     #FPRTH Ciclo para esperar que el usuario envie otro texto
     while True: 
@@ -256,4 +266,22 @@ def grabacion(duracion):
     cliente.EnviarTexto(b_audio) #FPRTH Se envia por MQTT el audio a enviar
 
 
+def encriptacion_del_mensaje(message,llave='lallavesecreta16'):#AIPG metodo de cifrado, llave es una cadena de 16 bits
+    mensaje = _pad(message)
+    #print(mensaje)
+    key = hashlib.sha256(llave.encode()).digest()
+    #print('key: ',key)
 
+    file_key=open('key','wb')#AIPGguarda la llave del cifrado
+    file_key.write(key)
+    file_key.close()
+
+    iv = Random.new().read(AES.block_size)
+    #print('iv: ',iv)
+    cifrado = AES.new(key, AES.MODE_CBC, iv)#AIPG cifrado que vamos a utilizar
+
+    return base64.b64encode(iv + cifrado.encrypt(mensaje.encode()))
+
+def _pad(s):#AIPG rellena por si no es multiplo 
+    retorno = s + (bs - len(s) % bs) * chr(bs - len(s) % bs)
+    return retorno 
