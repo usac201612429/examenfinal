@@ -2,7 +2,6 @@
 
 
 from constantes import * #FPRTH Importando las constantes del proyecto
-from ClientComands import * #OAGM Importando clases para los comandos del cliente
 
 #FPRTH Importando las librerias necesarias
 import os
@@ -10,11 +9,6 @@ import paho.mqtt.client as paho
 import logging
 import time
 import threading
-
-import base64
-import hashlib
-from Crypto.Cipher import AES
-from Crypto import Random
 
 #FPRTH Definiendo la estrucutra de mensajes de logging
 FORMATO = '[%(levelname)s] %(message)s'
@@ -47,6 +41,10 @@ class clients (object):
         self.cliente_paho.connect(host=MQTT_HOST,port=MQTT_PORT)
         self.cliente_paho.subscribe(self.subscripciones)
         self.cliente_paho.loop_start()
+
+        self.message = "00"
+        self.topic = "00"
+        self.ftrSent = False
 
         self.hilos =[] #FPRTH Lista que controla los hilos a usar para reproducir el audio
         
@@ -111,6 +109,8 @@ class clients (object):
 
     #FPRTH Funcion que maneja cuando se recibe un mensaje por MQTT
     def on_message(self,client,userdata,msg):
+        self.message = msg.payload
+        self.topic = msg.topic
         
         topic=str(msg.topic)#FPRTH Se obtiene el topic donde se recibio el mensaje
         ltopic=topic.split('/') #FPRTH El topic se divide en lista para ver su estructura y poder tomar decisioens
@@ -118,23 +118,10 @@ class clients (object):
         #FPRTH Se comprueba de que topic proviene el mensaje
         if ltopic[0]==MQTT_USUARIOS[:-1]: #Si es de usuarios solo se muestra el mensaje
             print('\n\n')
-            #logging.info("[MENSAJE NUEVO DE USUARIO]\n\t"+msg.payload.decode()+'\n')
-
-            #AIPG decodificando el mensaje
-            msg_cifrado = msg.payload
-            msg_sin_cifrado = descifrar_mensaje(msg_cifrado)#AIPG descifrando mensaje
-            logging.info("[MENSAJE NUEVO DE USUARIO]\n\t"+msg_sin_cifrado+'\n')
-            #############################################################################
-
+            logging.info("[MENSAJE NUEVO DE USUARIO]\n\t"+msg.payload.decode()+'\n')
         elif ltopic[0]==MQTT_SALAS[:-1]: #FPRTH Si es de una sala se muestra el mensaje indicando de que sala proviene el mensaje
             print('\n\n')
-            #logging.info("[MENSAJE NUEVO EN LA SALA " +ltopic[2]+"]\n\t"+msg.payload.decode()+'\n')
-
-            #AIPG descifrando mensaje que llega a la sala
-            msg_cifrado = msg.payload
-            msg_sin_cifrado = descifrar_mensaje(msg_cifrado)#AIPG descifrando mensaje
-            logging.info("[MENSAJE NUEVO EN LA SALA " +ltopic[2]+"]\n\t"+msg_sin_cifrado+'\n')
-            #############################################################################################
+            logging.info("[MENSAJE NUEVO EN LA SALA " +ltopic[2]+"]\n\t"+msg.payload.decode()+'\n')
         elif ltopic[0]==MQTT_AUDIO[:-1]: #FPRTH Si viene del topic audio se indica que es audio y se crea un hilo que guarda y reproduce el audio
             print('\n\n')
             logging.info("[MENSAJE DE AUDIO NUEVO]")
@@ -143,8 +130,6 @@ class clients (object):
             #FPRTH Se configura e inicia el hilo que guarda y reproduce el audio
             self.hilo = threading.Thread(name='Reproductor de audio recibido',target=self.Reproducir_Audio, args=((archivo_nombre,brcibidos)),daemon=False)
             self.hilo.start()
-        elif ltopic[0] == 'comandos': #FPRTH Si viene del topic comandos se ejecuta un metodo diferente
-            comandos.verificarMensajes(msg.payload, msg.topic)
 
 
     #FPRTH Funcion que guarda y reproduce el audio
@@ -156,25 +141,6 @@ class clients (object):
         os.system('aplay '+nombre) #FPRTH Se reproduce el archivo
 
 
-def _unpad(s):#AIPG este metodo devuelve el mensaje decodificiado en binario
-    quitar = s[:-ord(s[len(s)-1:])]
-    return quitar
-
-def descifrar_mensaje(mensaje_encriptado):#AIPG descrifra el mensaje recibido en binario
-    mensaje_encriptado = base64.b64decode(mensaje_encriptado)
-    #print(mensaje_encriptado)
-
-    key_file = open('key','rb')#AIPG abre la llave para descifrar el codigo recibido
-    key = key_file.read()
-    #print('key:' ,key)
-    key_file.close()
-
-    iv = mensaje_encriptado[:AES.block_size]#quitamos el iv del mensaje
-    #print('iv: ',iv)
-
-    descifrado = AES.new(key,AES.MODE_CBC, iv)
-
-    return _unpad(descifrado.decrypt(mensaje_encriptado[AES.block_size:])).decode()
 
 
 ''' #OAGM: objeto comandos. Recibe la cliente mqtt como parametro (paho.Client)

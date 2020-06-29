@@ -26,6 +26,7 @@ FORMATO = '[%(levelname)s] %(message)s'
 logging.basicConfig(level = logging.INFO, format=FORMATO)
 
 cliente = clients() #FPRTH Se crea un nuevo objeto de tipo cliente
+comandos = ClientCommands(cliente)
 
 #FPRTH Se crea una funcion que maneja la interfaz para el usuario.  
 
@@ -43,7 +44,11 @@ def menu_principal():
         if t == '1':
             menu_texto()
         elif t=='2':
-            menu_voz()
+            if comandos.enviandoAudio:        #OAGM: si no se espera respuesta (OK/NO) del srvidor puede empezar proceso de envio de audio
+                os.system('clear')
+                print("Se está enviando el audio anterior")
+            else:
+                menu_voz()
         elif t=='3':
             menu_salir()
             break
@@ -260,11 +265,11 @@ def envio_audio():
 def grabacion(duracion):
     #FPRTH Se obtiene los bits del archivo a enviar
     os.system('arecord -d '+duracion+' -f U8 -r 8000 audio.wav')
-    audio = open('audio.wav','rb')
-    b_audio = audio.read()
-    audio.close()
-    cliente.EnviarTexto(b_audio) #FPRTH Se envia por MQTT el audio a enviar
-
+    # audio = open('audio.wav','rb')
+    # b_audio = audio.read()
+    # audio.close()
+    # cliente.EnviarTexto(b_audio) #FPRTH Se envia por MQTT el audio a enviar
+    comandos.ftr()
 
 def encriptacion_del_mensaje(message,llave='lallavesecreta16'):#AIPG metodo de cifrado, llave es una cadena de 16 bits
     mensaje = _pad(message)

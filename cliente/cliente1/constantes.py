@@ -24,5 +24,6 @@ MQTT_AUDIO ='audio/'
 
 #General
 ALIVE_PERIOD = 2
+TCP_PORT = 9801
 
 
